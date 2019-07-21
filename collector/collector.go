@@ -91,12 +91,12 @@ func (c *CloudWatchAlarms) Collect(ch chan<- prometheus.Metric) {
 			prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, subsystem, "state"),
 				"Cloudwatch alarm state: 0=OK, 1=Alarm, -1=InsufficientData, -1000=InternalCollectorError",
-				[]string{"name", "namespace"},
+				[]string{"name", "namespace", "metric"},
 				nil,
 			),
 			prometheus.GaugeValue,
 			value,
-			*alarm.AlarmName, *alarm.Namespace,
+			*alarm.AlarmName, *alarm.Namespace, *alarm.MetricName,
 		)
 		ch <- metric
 		c.metrics = append(c.metrics, metric)
