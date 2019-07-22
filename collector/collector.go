@@ -17,6 +17,8 @@ const (
 
 type alarmFetcher interface {
 	Alarms() ([]*cloudwatch.MetricAlarm, error)
+	TagsForAlarm(*cloudwatch.MetricAlarm) (map[string]string, error)
+	Tags() *[]string
 }
 
 // CloudWatchAlarms implements the Prometheus Collector interface
@@ -87,16 +89,31 @@ func (c *CloudWatchAlarms) Collect(ch chan<- prometheus.Metric) {
 			continue
 		}
 
+		metricNames := []string{"name", "namespace", "metric"}
+		metricValues := []string{*alarm.AlarmName, *alarm.Namespace, *alarm.MetricName}
+		tags, err := c.alarmFetcher.TagsForAlarm(alarm)
+		if err != nil {
+			log.Printf("unable to fetch tags for %s: %v", *alarm.AlarmName, err)
+		}
+		for _, key := range *c.alarmFetcher.Tags() {
+			metricNames = append(metricNames, key)
+			if v, ok := tags[key]; ok {
+				metricValues = append(metricValues, v)
+			} else {
+				metricValues = append(metricValues, "")
+			}
+		}
+
 		metric := prometheus.MustNewConstMetric(
 			prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, subsystem, "state"),
 				"Cloudwatch alarm state: 0=OK, 1=Alarm, -1=InsufficientData, -1000=InternalCollectorError",
-				[]string{"name", "namespace"},
+				metricNames,
 				nil,
 			),
 			prometheus.GaugeValue,
 			value,
-			*alarm.AlarmName, *alarm.Namespace,
+			metricValues...,
 		)
 		ch <- metric
 		c.metrics = append(c.metrics, metric)

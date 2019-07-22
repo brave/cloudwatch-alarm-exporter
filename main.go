@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -22,15 +21,17 @@ import (
 	"github.com/otm/cloudwatch-alarm-exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/pflag"
 )
 
 func main() {
-	portFlag := flag.Int("port", 8080, "The HTTP `port` to listen to")
-	regionFlag := flag.String("region", "", "The AWS region to use, eg 'eu-west-1'")
-	retriesFlag := flag.Int("retries", 1, "The `number` of retries when fetchinh alarms")
-	alertManagerFlag := flag.String("alertmanager", "", "`URL` to alert manager")
-	refreshIntervalFlag := flag.Int("refresh", 10, "Time in `seconds` between refreshing alarms")
-	flag.Parse()
+	portFlag := pflag.Int("port", 8080, "The HTTP `port` to listen to")
+	regionFlag := pflag.String("region", "", "The AWS region to use, eg 'eu-west-1'")
+	retriesFlag := pflag.Int("retries", 1, "The `number` of retries when fetching alarms")
+	alertManagerFlag := pflag.String("alertmanager", "", "`URL` to alert manager")
+	refreshIntervalFlag := pflag.Int("refresh", 10, "Time in `seconds` between refreshing alarms")
+	tagsFlag := pflag.StringArray("tag", []string{}, "Key values for tags to export from AWS")
+	pflag.Parse()
 
 	if *regionFlag == "" {
 		*regionFlag = os.Getenv("AWS_REGION")
@@ -48,6 +49,7 @@ func main() {
 	cw := cloudwatch.New(sess)
 	ca := CloudwatchAlarms{
 		alarmDescriber: cw,
+		tags:           *tagsFlag,
 	}
 
 	if *alertManagerFlag != "" {
@@ -214,6 +216,7 @@ func jsonEncode(w http.ResponseWriter, data interface{}) {
 // AlarmDescriber is used for describing the current CloudWatch alarms
 type AlarmDescriber interface {
 	DescribeAlarms(*cloudwatch.DescribeAlarmsInput) (*cloudwatch.DescribeAlarmsOutput, error)
+	ListTagsForResource(*cloudwatch.ListTagsForResourceInput) (*cloudwatch.ListTagsForResourceOutput, error)
 }
 
 // AlarmFetcher is a highlevel interface to provide a nice abstraction when collecting
@@ -226,6 +229,7 @@ type AlarmFetcher interface {
 // CloudwatchAlarms implements the Alerter and AlarmFetcher interface
 type CloudwatchAlarms struct {
 	alarmDescriber AlarmDescriber
+	tags           []string
 }
 
 // Alarms implements the collector alarmFethcer interface
@@ -252,6 +256,28 @@ func (ca CloudwatchAlarms) fetchAlarms(nextToken *string) ([]*cloudwatch.MetricA
 	}
 
 	return alarms, nil
+}
+
+func (ca CloudwatchAlarms) TagsForAlarm(alarm *cloudwatch.MetricAlarm) (map[string]string, error) {
+	tags := make(map[string]string)
+
+	tagsResourceInput := &cloudwatch.ListTagsForResourceInput{ResourceARN: alarm.AlarmArn}
+	tagResourceOutput, err := ca.alarmDescriber.ListTagsForResource(tagsResourceInput)
+	if err != nil {
+		return nil, err
+	}
+	for _, tag := range tagResourceOutput.Tags {
+		for _, key := range ca.tags {
+			if *tag.Key == key {
+				tags[key] = *tag.Value
+			}
+		}
+	}
+	return tags, nil
+}
+
+func (ca CloudwatchAlarms) Tags() *[]string {
+	return &ca.tags
 }
 
 // Alerts implements the alertmanager Alerter interface
