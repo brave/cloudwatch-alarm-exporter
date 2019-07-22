@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -22,15 +21,16 @@ import (
 	"github.com/otm/cloudwatch-alarm-exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/spf13/pflag"
 )
 
 func main() {
-	portFlag := flag.Int("port", 8080, "The HTTP `port` to listen to")
-	regionFlag := flag.String("region", "", "The AWS region to use, eg 'eu-west-1'")
-	retriesFlag := flag.Int("retries", 1, "The `number` of retries when fetchinh alarms")
-	alertManagerFlag := flag.String("alertmanager", "", "`URL` to alert manager")
-	refreshIntervalFlag := flag.Int("refresh", 10, "Time in `seconds` between refreshing alarms")
-	flag.Parse()
+	portFlag := pflag.Int("port", 8080, "The HTTP `port` to listen to")
+	regionFlag := pflag.String("region", "", "The AWS region to use, eg 'eu-west-1'")
+	retriesFlag := pflag.Int("retries", 1, "The `number` of retries when fetching alarms")
+	alertManagerFlag := pflag.String("alertmanager", "", "`URL` to alert manager")
+	refreshIntervalFlag := pflag.Int("refresh", 10, "Time in `seconds` between refreshing alarms")
+	pflag.Parse()
 
 	if *regionFlag == "" {
 		*regionFlag = os.Getenv("AWS_REGION")
