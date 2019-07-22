@@ -15,4 +15,4 @@ ENV        AWS_SHARED_CREDENTIALS_FILE=/etc/cloudwatch-alarm-exporter/aws/creden
 EXPOSE     8080
 WORKDIR    /cloudwatch-alarm-exporter
 ENTRYPOINT [ "/bin/cloudwatch-alarm-exporter" ]
-CMD        [ "-port=8080", "-retries=1", "-refresh=10" ]
+CMD        [ "--port=8080", "--retries=1", "--refresh=10" ]
