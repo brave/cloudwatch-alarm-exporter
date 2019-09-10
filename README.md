@@ -4,4 +4,4 @@ This exporter exposes the state of the CloudWatch alarms. It is also possible to
 ## Building
 Building the project is straight forward by using `go get`
 
- go get github.com/otm/cloudwatch-alarm-exporter
+ go get github.com/brave/cloudwatch-alarm-exporter
