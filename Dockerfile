@@ -1,18 +1,18 @@
+# iron/go is the alpine image with only ca-certificates added
 FROM golang:1.12.7-alpine
 
-WORKDIR /go/src/github.com/otm/cloudwatch-alarm-exporter
-COPY . /go/src/github.com/otm/cloudwatch-alarm-exporter
+WORKDIR /app
 
-RUN go build -o cloudwatch-alarm-exporter \
-    && cp cloudwatch-alarm-exporter /bin/ \
-    && mkdir -p /cloudwatch-alarm-exporter /etc/cloudwatch-alarm-exporter/aws \
-    && chown -R nobody:nogroup /cloudwatch-alarm-exporter /etc/cloudwatch-alarm-exporter \
-    && rm -rf /go
+# Now just add the binary
+ADD cloudwatch-alarm-exporter /app/
 
-USER       nobody
-ENV        AWS_CONFIG_FILE=/etc/cloudwatch-alarm-exporter/aws/config
-ENV        AWS_SHARED_CREDENTIALS_FILE=/etc/cloudwatch-alarm-exporter/aws/credentials
-EXPOSE     8080
-WORKDIR    /cloudwatch-alarm-exporter
-ENTRYPOINT [ "/bin/cloudwatch-alarm-exporter" ]
-CMD        [ "--port=8080", "--retries=1", "--refresh=10" ]
+# Set up operating environment
+USER nobody
+ENV AWS_CONFIG_FILE=/etc/cloudwatch-alarm-exporter/aws/config
+ENV AWS_SHARED_CREDENTIALS_FILE=/etc/cloudwatch-alarm-exporter/aws/credentials
+ENV AWS_SDK_LOAD_CONFIG=1
+
+EXPOSE 8080
+
+ENTRYPOINT [ "./cloudwatch-alarm-exporter" ]
+CMD        ["--port=8080", "--retries=1", "--refresh=10" ]
